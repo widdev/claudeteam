@@ -337,7 +337,7 @@ button:hover {
   min-height: 0;
 }
 
-/* Agent panel wrapper (GL container + status bar) */
+/* Agent panel (left, fixed) */
 #agent-panel-wrapper {
   flex: 1;
   display: flex;
@@ -346,64 +346,154 @@ button:hover {
   overflow: hidden;
 }
 
-#agent-panel-wrapper.hidden {
-  display: none !important;
-}
-
-/* When agents are hidden, comms panel fills the space */
-#agent-panel-wrapper.hidden ~ #message-panel {
-  width: 100% !important;
-  max-width: 100% !important;
-}
-
-/* GoldenLayout container */
-#layout-container {
+#agent-gl-container {
   flex: 1;
   position: relative;
   overflow: hidden;
 }
 
-/* Empty state prompt */
+#agent-gl-container.empty .lm_goldenlayout { display: none; }
+
 #empty-agent-prompt {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  text-align: center;
-  z-index: 1;
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  text-align: center; z-index: 1;
+}
+#empty-agent-prompt.hidden { display: none !important; }
+#empty-agent-prompt h2 { font-size: 20px; font-weight: 400; color: var(--text-primary); margin-bottom: 10px; }
+#empty-agent-prompt p { color: var(--text-muted); font-size: 14px; line-height: 1.5; margin-bottom: 20px; }
+#empty-agent-prompt button { background: var(--accent); color: white; border: none; padding: 8px 22px; border-radius: 4px; font-size: 13px; cursor: pointer; }
+#empty-agent-prompt button:hover { background: var(--accent-hover); }
+
+#agents-statusbar {
+  display: flex; align-items: center; padding: 3px 8px;
+  background: var(--bg-secondary); border-top: 1px solid var(--border);
+  flex-shrink: 0; height: 24px;
 }
 
-#empty-agent-prompt.hidden {
-  display: none !important;
+#terminal-zoom-select {
+  background: var(--bg-tertiary); color: var(--text-secondary);
+  border: 1px solid var(--border); border-radius: 2px; padding: 1px 4px;
+  font-size: 10px; cursor: pointer; outline: none;
+}
+#terminal-zoom-select:focus { border-color: var(--accent); }
+
+/* Splitter */
+#panel-splitter {
+  width: 4px; cursor: col-resize; background: var(--border);
+  flex-shrink: 0; transition: background 0.15s;
+}
+#panel-splitter:hover, #panel-splitter.dragging { background: var(--accent); }
+
+/* Dock container (right, GL for Discussion + Tasks) */
+#dock-container {
+  width: 30%;
+  min-width: 200px;
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
 }
 
-#empty-agent-prompt h2 {
-  font-size: 20px;
-  font-weight: 400;
-  color: var(--text-primary);
-  margin-bottom: 10px;
+
+/* ─── GL panel inner containers ───────────────────────────────────── */
+.discussion-inner, .tasks-inner {
+  display: flex; flex-direction: column; height: 100%; overflow: hidden;
 }
 
-#empty-agent-prompt p {
-  color: var(--text-muted);
-  font-size: 14px;
-  line-height: 1.5;
-  margin-bottom: 20px;
+.empty-agent-prompt {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  text-align: center; z-index: 1;
+}
+.empty-agent-prompt.hidden { display: none !important; }
+.empty-agent-prompt h2 { font-size: 20px; font-weight: 400; color: var(--text-primary); margin-bottom: 10px; }
+.empty-agent-prompt p { color: var(--text-muted); font-size: 14px; line-height: 1.5; margin-bottom: 20px; }
+.empty-agent-prompt button { background: var(--accent); color: white; border: none; padding: 8px 22px; border-radius: 4px; font-size: 13px; cursor: pointer; }
+.empty-agent-prompt button:hover { background: var(--accent-hover); }
+
+/* ─── Discussion panel (inside GL component) ──────────────────────── */
+.discussion-inner {
+  display: flex; flex-direction: column; height: 100%; overflow: hidden;
+  background: var(--msg-panel-bg, var(--bg-secondary));
 }
 
-#empty-agent-prompt button {
-  background: var(--accent);
-  color: white;
-  border: none;
-  padding: 8px 22px;
-  border-radius: 4px;
-  font-size: 13px;
-  cursor: pointer;
+.disc-port-bar {
+  display: flex; align-items: center; gap: 6px; padding: 6px 12px;
+  border-bottom: 1px solid var(--border); font-size: 12px; flex-shrink: 0;
+}
+.disc-port-bar label { color: var(--text-secondary); }
+
+.disc-port-input {
+  background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border);
+  border-radius: 2px; padding: 2px 6px; font-size: 12px; width: 70px; -moz-appearance: textfield;
+}
+.disc-port-input::-webkit-inner-spin-button, .disc-port-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+.disc-port-input:focus { border-color: var(--accent); outline: none; }
+.disc-restart-btn { padding: 2px 8px; font-size: 11px; }
+
+.disc-archive-btn {
+  font-size: 11px; padding: 1px 8px; border: 1px solid var(--border); border-radius: 2px;
+  background: var(--bg-tertiary); color: var(--text-secondary); cursor: pointer;
+}
+.disc-archive-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+.disc-message-list {
+  flex: 1; overflow-y: auto; padding: 8px;
 }
 
-#empty-agent-prompt button:hover {
-  background: var(--accent-hover);
+.disc-master-bar, .tasks-input-bar {
+  display: flex; flex-direction: column; padding: 6px 8px; gap: 4px;
+  background: var(--panel-header); border-top: 1px solid var(--border); flex-shrink: 0;
 }
+
+.disc-master-input, .tasks-input {
+  width: 100%; background: var(--bg-tertiary); color: var(--text-primary);
+  border: 1px solid var(--border); padding: 6px 8px; border-radius: 3px;
+  font-family: inherit; font-size: 12px; resize: none;
+  height: 96px; overflow-y: auto;
+}
+.disc-master-input:focus, .tasks-input:focus { border-color: var(--accent); outline: none; }
+.disc-master-input.drag-over { border-color: var(--accent); background: var(--bg-hover); }
+
+.disc-broadcast-btn, .tasks-add-btn {
+  align-self: flex-end; background: var(--accent); color: white;
+  border: none; padding: 4px 14px; font-size: 11px; font-weight: bold;
+}
+.disc-broadcast-btn:hover, .tasks-add-btn:hover { background: var(--accent-hover); }
+
+
+.show-older-btn {
+  text-align: center; padding: 6px 8px; margin-bottom: 8px; font-size: 11px;
+  color: var(--accent); cursor: pointer; border: 1px dashed var(--border); border-radius: 4px;
+}
+.show-older-btn:hover { background: var(--bg-hover); border-color: var(--accent); }
+
+/* ─── Tasks panel (inside GL component) ───────────────────────────── */
+.tasks-inner {
+  display: flex; flex-direction: column; height: 100%; overflow: hidden;
+  background: var(--bg-secondary);
+}
+.tasks-list { flex: 1; overflow-y: auto; padding: 8px; }
+
+/* ─── Panel statusbars ────────────────────────────────────────────── */
+.panel-statusbar {
+  display: flex; align-items: center; padding: 3px 8px;
+  background: var(--bg-secondary); border-top: 1px solid var(--border);
+  flex-shrink: 0; height: 24px;
+}
+
+.disc-zoom-select, .tasks-zoom-select, .terminal-zoom-select {
+  background: var(--bg-tertiary); color: var(--text-secondary);
+  border: 1px solid var(--border); border-radius: 2px; padding: 1px 4px;
+  font-size: 10px; cursor: pointer; outline: none;
+}
+.disc-zoom-select:focus, .tasks-zoom-select:focus, .terminal-zoom-select:focus { border-color: var(--accent); }
+
+/* Agents statusbar */
+.agents-statusbar {
+  display: flex; align-items: center; padding: 3px 8px;
+  background: var(--bg-secondary); border-top: 1px solid var(--border);
+  flex-shrink: 0; height: 24px;
+}
+
 
 /* Icon button (layout toggle) */
 .btn-icon {
@@ -441,10 +531,6 @@ button:hover {
   border-radius: 2px;
 }
 
-/* In tab mode, hide name from header (it's in the tab already) */
-body.layout-tabs .agent-name-label {
-  display: none;
-}
 
 /* Nudge button */
 .btn-nudge-agent {
@@ -516,10 +602,6 @@ body.layout-tabs .agent-name-label {
   color: var(--danger);
 }
 
-/* Hide close button in tab mode (tabs have their own close) */
-body.layout-tabs .agent-header .btn-close-agent {
-  display: none;
-}
 
 /* Attention badge in agent header */
 .attention-badge {
@@ -555,126 +637,6 @@ body.layout-tabs .agent-header .btn-close-agent {
   overflow: hidden;
 }
 
-/* Panel splitter (drag handle) */
-#panel-splitter {
-  width: 4px;
-  cursor: col-resize;
-  background: var(--border);
-  flex-shrink: 0;
-  transition: background 0.15s;
-}
-
-#panel-splitter:hover,
-#panel-splitter.dragging {
-  background: var(--accent);
-}
-
-/* Message panel */
-#message-panel {
-  width: 25%;
-  min-width: 20%;
-  background: var(--msg-panel-bg);
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-}
-
-#message-panel.hidden {
-  display: none !important;
-}
-
-/* Splitter hidden when message panel is hidden (managed via JS) */
-
-#message-panel-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 12px;
-  background: var(--panel-header);
-  border-bottom: 1px solid var(--border);
-  font-weight: bold;
-  font-size: 13px;
-}
-
-#message-panel-controls {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-#message-panel-header button {
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: 0;
-}
-
-#btn-close-messages {
-  font-size: 18px;
-}
-
-#btn-archive-messages {
-  font-size: 11px;
-  padding: 1px 6px !important;
-  border: 1px solid var(--border) !important;
-  border-radius: 2px;
-}
-
-#message-panel-header button:hover {
-  color: var(--text-primary);
-}
-
-#btn-archive-messages:hover {
-  border-color: var(--accent) !important;
-  color: var(--accent);
-}
-
-#message-port-bar {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-bottom: 1px solid var(--border);
-  font-size: 12px;
-  flex-shrink: 0;
-}
-
-#message-port-bar label {
-  color: var(--text-secondary);
-}
-
-#port-input {
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  padding: 2px 6px;
-  font-size: 12px;
-  width: 70px;
-  -moz-appearance: textfield;
-}
-
-#port-input::-webkit-inner-spin-button,
-#port-input::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-}
-
-#port-input:focus {
-  border-color: var(--accent);
-  outline: none;
-}
-
-#btn-restart-port {
-  padding: 2px 8px;
-  font-size: 11px;
-}
-
-#message-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px;
-}
 
 .message-entry {
   padding: 8px;
@@ -739,37 +701,6 @@ body.layout-tabs .agent-header .btn-close-agent {
   line-height: 1.4;
 }
 
-/* Broadcast bar (inside message panel) */
-#master-bar {
-  display: flex;
-  flex-direction: column;
-  padding: 6px 8px;
-  gap: 4px;
-  background: var(--panel-header);
-  border-top: 1px solid var(--border);
-  flex-shrink: 0;
-}
-
-#master-input {
-  width: 100%;
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
-  border: 1px solid var(--border);
-  padding: 6px 8px;
-  border-radius: 3px;
-  font-family: inherit;
-  font-size: 12px;
-  resize: none;
-  min-height: 96px;
-  max-height: 160px;
-  overflow-y: auto;
-}
-
-#master-input:focus {
-  border-color: var(--accent);
-  outline: none;
-}
-
 /* Show older messages button */
 .show-older-btn {
   text-align: center;
@@ -787,189 +718,35 @@ body.layout-tabs .agent-header .btn-close-agent {
   border-color: var(--accent);
 }
 
-#master-input.drag-over {
-  border-color: var(--accent);
-  background: var(--bg-hover);
-}
+/* GoldenLayout — colors only, let the framework handle layout */
+.lm_goldenlayout { background: var(--bg-secondary) !important; }
+.lm_header { background: var(--bg-tertiary) !important; }
+.lm_header .lm_tab { background: var(--bg-tertiary) !important; color: var(--text-secondary) !important; font-size: 12px !important; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important; }
+.lm_header .lm_tab.lm_active { background: var(--bg-secondary) !important; color: var(--text-primary) !important; }
+.lm_header .lm_tab .lm_title { background: transparent !important; }
+.lm_header .lm_tab i { background: transparent !important; }
+.lm_content { background: var(--bg-secondary) !important; }
+.lm_splitter { background: var(--border) !important; }
+.lm_dropTargetIndicator { background: rgba(86, 156, 214, 0.2) !important; border: 2px solid var(--accent) !important; }
 
-#btn-broadcast {
-  align-self: flex-end;
-  background: var(--accent);
-  color: white;
-  border: none;
-  padding: 4px 14px;
-  font-size: 11px;
-  font-weight: bold;
-}
+/* Hide the stack-level close button (top-right of tab bar) */
+.lm_controls .lm_close { display: none !important; }
 
-#btn-broadcast:hover {
-  background: var(--accent-hover);
-}
+/* Close buttons — replace default images with text */
+.lm_controls .lm_close { background-image: none !important; }
+.lm_controls .lm_close::after { content: '\00d7'; color: var(--text-muted); font-size: 16px; }
+.lm_controls .lm_close:hover::after { color: var(--danger); }
+.lm_header .lm_tab .lm_close_tab { background-image: none !important; }
+.lm_header .lm_tab .lm_close_tab::after { content: '\00d7'; color: var(--text-muted); font-size: 14px; }
+.lm_header .lm_tab .lm_close_tab:hover::after { color: var(--danger); }
 
-/* GoldenLayout overrides for dark theme */
-.lm_goldenlayout {
-  background: var(--bg-primary) !important;
-}
-
-.lm_header {
-  background: var(--bg-secondary) !important;
-  height: 28px !important;
-  border-bottom: none !important;
-  padding: 0 !important;
-  margin: 0 !important;
-}
-
-/* In side-by-side and stacked modes, hide the tab headers completely */
-body.layout-side-by-side .lm_header,
-body.layout-stacked .lm_header {
-  display: none !important;
-}
-
-.lm_tab {
-  background: var(--bg-tertiary) !important;
-  color: var(--text-secondary) !important;
-  border: 1px solid var(--border) !important;
-  border-top: 2px solid transparent !important;
-  border-bottom: 1px solid var(--border) !important;
-  margin-right: 2px !important;
-  margin-bottom: 0 !important;
-  padding: 2px 22px 2px 12px !important;
-  font-size: 12px !important;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
-  position: relative !important;
-  transition: border-top-color 0.15s;
-}
-
-.lm_tab.lm_active {
-  background: var(--bg-primary) !important;
-  color: var(--text-primary) !important;
-  border-bottom-color: var(--bg-primary) !important;
-  margin-bottom: -1px !important;
-  padding-bottom: 3px !important;
-  z-index: 2 !important;
-}
-
-/* Eliminate ALL gaps between header and content */
-.lm_stack > .lm_items {
-  border-top: none !important;
-  margin-top: 0 !important;
-  padding-top: 0 !important;
-}
-
-.lm_item {
-  border: none !important;
-}
-
-/* Tab attention indicator */
+/* Attention indicator on agent tabs */
 @keyframes tab-attention-bg {
   0%, 100% { background-color: var(--bg-tertiary); }
   50% { background-color: var(--tab-attention-bg); }
 }
-
-.lm_tab.attention {
-  animation: tab-attention-bg 1.5s ease-in-out infinite !important;
-}
-
-.lm_tab.attention .lm_title::before {
-  content: '! ';
-  color: var(--danger);
-  font-weight: bold;
-}
-
-/* Tab container flex layout for shrinking */
-.lm_tabs {
-  display: flex !important;
-  overflow: hidden !important;
-}
-
-.lm_tab {
-  flex-shrink: 1 !important;
-  min-width: 60px !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-  white-space: nowrap !important;
-}
-
-/* Tab add button (+ in tab mode) — inline after last tab */
-.tab-add-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: var(--bg-tertiary);
-  color: var(--accent);
-  font-size: 16px;
-  font-weight: bold;
-  cursor: pointer;
-  margin-left: 4px;
-  margin-top: 2px;
-  position: relative;
-  flex-shrink: 0;
-  line-height: 1;
-  border: 1px solid var(--border);
-  transition: background 0.15s;
-}
-
-.tab-add-btn:hover {
-  background: var(--bg-hover);
-  color: var(--accent-hover);
-}
-
-.lm_splitter {
-  background: var(--border) !important;
-}
-
-.lm_content {
-  background: var(--bg-primary) !important;
-  border: none !important;
-  margin: 0 !important;
-  padding: 0 !important;
-}
-
-.lm_controls .lm_close {
-  background-image: none !important;
-}
-
-.lm_controls .lm_close::after {
-  content: '\00d7';
-  color: var(--text-muted);
-  font-size: 16px;
-}
-
-.lm_controls .lm_close:hover::after {
-  color: var(--danger);
-}
-
-/* Close button on individual tabs */
-.lm_header .lm_tab .lm_close_tab {
-  background-image: none !important;
-  cursor: pointer;
-  opacity: 0.5;
-  right: 4px !important;
-  top: 50% !important;
-  transform: translateY(-50%);
-}
-
-.lm_header .lm_tab .lm_close_tab::after {
-  content: '\00d7';
-  color: var(--text-muted);
-  font-size: 14px;
-}
-
-.lm_header .lm_tab .lm_close_tab:hover {
-  opacity: 1;
-}
-
-.lm_header .lm_tab .lm_close_tab:hover::after {
-  color: var(--danger);
-}
-
-.lm_dropTargetIndicator {
-  background: rgba(86, 156, 214, 0.2) !important;
-  border: 2px solid var(--accent) !important;
-}
+.lm_tab.attention { animation: tab-attention-bg 1.5s ease-in-out infinite !important; }
+.lm_tab.attention .lm_title::before { content: '! '; color: var(--danger); font-weight: bold; }
 
 /* Scrollbar styling */
 ::-webkit-scrollbar {
@@ -1221,85 +998,6 @@ body.layout-stacked .lm_header {
   color: color-mix(in srgb, currentColor 70%, transparent);
 }
 
-/* ─── Status bars (bottom of agent panel and message panel) ───────── */
-#agent-status-bar,
-#message-status-bar {
-  display: flex;
-  align-items: center;
-  padding: 3px 8px;
-  background: var(--bg-secondary);
-  border-top: 1px solid var(--border);
-  flex-shrink: 0;
-  height: 24px;
-}
-
-#terminal-zoom-select,
-#zoom-select {
-  background: var(--bg-tertiary);
-  color: var(--text-secondary);
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  padding: 1px 4px;
-  font-size: 10px;
-  cursor: pointer;
-  outline: none;
-}
-
-#terminal-zoom-select:focus,
-#zoom-select:focus {
-  border-color: var(--accent);
-}
-
-/* ─── Task panel ──────────────────────────────────────────────────── */
-#task-panel {
-  width: 220px;
-  min-width: 150px;
-  background: var(--bg-secondary);
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-  border-left: 1px solid var(--border);
-}
-
-#task-panel.hidden {
-  display: none !important;
-}
-
-#task-panel-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 12px;
-  background: var(--panel-header);
-  border-bottom: 1px solid var(--border);
-  font-weight: bold;
-  font-size: 13px;
-}
-
-#task-panel-controls {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-#task-panel-header button {
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: 0;
-  font-size: 18px;
-}
-
-#task-panel-header button:hover {
-  color: var(--text-primary);
-}
-
-#task-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px;
-}
 
 .task-entry {
   padding: 8px;
@@ -1363,49 +1061,6 @@ body.layout-stacked .lm_header {
   line-height: 1.4;
 }
 
-#task-bar {
-  display: flex;
-  flex-direction: column;
-  padding: 6px 8px;
-  gap: 4px;
-  background: var(--panel-header);
-  border-top: 1px solid var(--border);
-  flex-shrink: 0;
-}
-
-#task-input {
-  width: 100%;
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
-  border: 1px solid var(--border);
-  padding: 6px 8px;
-  border-radius: 3px;
-  font-family: inherit;
-  font-size: 12px;
-  resize: none;
-  min-height: 50px;
-  max-height: 120px;
-  overflow-y: auto;
-}
-
-#task-input:focus {
-  border-color: var(--accent);
-  outline: none;
-}
-
-#btn-add-task {
-  align-self: flex-end;
-  background: var(--accent);
-  color: white;
-  border: none;
-  padding: 4px 14px;
-  font-size: 11px;
-  font-weight: bold;
-}
-
-#btn-add-task:hover {
-  background: var(--accent-hover);
-}
 
 /* Light theme terminal overrides */
 body.theme-light .xterm {

@@ -47,7 +47,9 @@
       "Read(//c/nodejs/**)",
       "Bash(git --exec-path)",
       "Bash(netstat -ano)",
-      "Bash(find 'C:\\\\Users\\\\Main Desktop\\\\source\\\\repos\\\\ClaudeManager/src' -type f \\\\\\(-name *.js -o -name *.ts -o -name *.json -o -name *.html -o -name *.css \\\\\\))"
+      "Bash(find 'C:\\\\Users\\\\Main Desktop\\\\source\\\\repos\\\\ClaudeManager/src' -type f \\\\\\(-name *.js -o -name *.ts -o -name *.json -o -name *.html -o -name *.css \\\\\\))",
+      "Bash(node -e \":*)",
+      "Bash(npx electron -e \":*)"
     ]
   }
 }

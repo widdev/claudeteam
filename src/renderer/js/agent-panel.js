@@ -183,33 +183,30 @@ export function createAgentPanel(container, agentId, agentName, agentCwd, glCont
   panel.className = 'agent-panel';
   panel.dataset.agentId = agentId;
 
-  // Header
+  // Compact toolbar (no name or colored border — those are in the tab)
   const header = document.createElement('div');
   header.className = 'agent-header';
-  header.style.borderLeft = `3px solid ${color}`;
 
   // Attention badge (hidden by default)
   const attentionBadge = document.createElement('span');
   attentionBadge.className = 'attention-badge hidden';
   attentionBadge.textContent = '!';
 
-  // Agent name label (read-only)
+  // Hidden name label — kept for refreshAgentColors and internal reference
   const nameLabel = document.createElement('span');
-  nameLabel.className = 'agent-name-label';
+  nameLabel.className = 'agent-name-label hidden';
   nameLabel.textContent = agentName;
-  nameLabel.style.color = color;
 
-  // Nudge button — sends "check messages" to the agent
+  // Nudge button
   const nudgeBtn = document.createElement('button');
   nudgeBtn.className = 'btn-nudge-agent';
   nudgeBtn.textContent = 'Nudge';
   nudgeBtn.title = 'Ask agent to check messages';
   nudgeBtn.addEventListener('click', () => {
-    const prompt = 'Please check for new messages addressed to you now and act on any you find.';
-    window.electronAPI.writeToAgent(agentId, prompt + '\r');
+    window.electronAPI.writeToAgent(agentId, 'Please check for new messages addressed to you now and act on any you find.\r');
   });
 
-  // Working path section — right aligned
+  // Working path — right aligned
   const cwdSection = document.createElement('div');
   cwdSection.className = 'agent-cwd-section';
 
@@ -233,22 +230,10 @@ export function createAgentPanel(container, agentId, agentName, agentCwd, glCont
   cwdSection.appendChild(cwdPath);
   cwdSection.appendChild(cwdBtn);
 
-  // Close button (visible in side-by-side mode)
-  const closeBtn = document.createElement('button');
-  closeBtn.className = 'btn-close-agent';
-  closeBtn.textContent = '\u00d7';
-  closeBtn.title = 'Close agent';
-  closeBtn.addEventListener('click', () => {
-    if (glContainer) {
-      glContainer.close();
-    }
-  });
-
   header.appendChild(attentionBadge);
   header.appendChild(nameLabel);
   header.appendChild(nudgeBtn);
   header.appendChild(cwdSection);
-  header.appendChild(closeBtn);
 
   // Terminal container
   const termContainer = document.createElement('div');

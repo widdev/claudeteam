@@ -39,16 +39,9 @@ function getRecentSessions() {
     .slice(0, 15);
 }
 
-let messagePanelOpen = true;
-let agentsPanelOpen = true;
-
-function setMessagePanelState(open) {
-  messagePanelOpen = open;
-}
-
-function setAgentsPanelState(open) {
-  agentsPanelOpen = open;
-}
+// Legacy — kept for export compatibility but no longer drives menu state
+function setMessagePanelState() {}
+function setAgentsPanelState() {}
 
 function isTemporarySession(sessionPath) {
   if (!sessionPath) return true;
@@ -140,40 +133,14 @@ function buildMenu(mainWindow, sessionManager, ptyManager, messageServer) {
         {
           label: 'Agent Layout',
           submenu: [
-            {
-              label: 'Side by Side',
-              type: 'radio',
-              checked: true,
-              click: () => mainWindow.webContents.send('menu:setLayout', 'side-by-side'),
-            },
-            {
-              label: 'Stacked',
-              type: 'radio',
-              checked: false,
-              click: () => mainWindow.webContents.send('menu:setLayout', 'stacked'),
-            },
-            {
-              label: 'Tabbed',
-              type: 'radio',
-              checked: false,
-              click: () => mainWindow.webContents.send('menu:setLayout', 'tabs'),
-            },
+            { label: 'Side by Side', type: 'radio', checked: true, click: () => mainWindow.webContents.send('menu:setLayout', 'side-by-side') },
+            { label: 'Stacked', type: 'radio', checked: false, click: () => mainWindow.webContents.send('menu:setLayout', 'stacked') },
+            { label: 'Tabbed', type: 'radio', checked: false, click: () => mainWindow.webContents.send('menu:setLayout', 'tabs') },
           ],
         },
         { type: 'separator' },
-        {
-          label: agentsPanelOpen ? 'Hide Agent Consoles' : 'Show Agent Consoles',
-          click: () => mainWindow.webContents.send('menu:toggleAgents'),
-        },
-        {
-          label: 'Toggle Tasks Panel',
-          click: () => mainWindow.webContents.send('menu:toggleTasks'),
-        },
-        {
-          label: messagePanelOpen ? 'Close Discussion' : 'Show Discussion',
-          accelerator: 'CmdOrCtrl+M',
-          click: () => mainWindow.webContents.send('menu:toggleMessages'),
-        },
+        { label: 'Show Discussion', click: () => mainWindow.webContents.send('menu:showDiscussion') },
+        { label: 'Show Tasks', click: () => mainWindow.webContents.send('menu:showTasks') },
         { type: 'separator' },
         {
           label: 'Toggle Light/Dark Theme',

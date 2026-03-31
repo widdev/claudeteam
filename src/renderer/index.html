@@ -32,14 +32,11 @@
       </div>
     </div>
     <div id="toolbar-right">
-      <button id="btn-toggle-layout" class="btn-icon" title="Switch layout mode"></button>
-      <button id="btn-show-agents" class="hidden" title="Show agent consoles">Show Agents</button>
-      <button id="btn-toggle-tasks" class="hidden" title="Show Tasks">Tasks</button>
-      <button id="btn-toggle-messages" class="hidden" title="Show Discussion (Ctrl+M)">Discussion</button>
+      <button id="btn-toggle-layout" class="btn-icon" title="Switch agent layout mode"></button>
     </div>
   </div>
 
-  <!-- Welcome screen (no session) -->
+  <!-- Welcome screen -->
   <div id="welcome-screen">
     <div id="welcome-content">
       <h1>ClaudeSession</h1>
@@ -51,77 +48,27 @@
 
   <!-- Main area -->
   <div id="main-area" class="hidden">
-    <!-- Agent panel wrapper (GL + status bar) -->
+    <!-- Agent shells (left, fixed) -->
     <div id="agent-panel-wrapper">
-      <!-- GoldenLayout container -->
-      <div id="layout-container">
-        <!-- Empty state prompt (shown when session open but no agents) -->
+      <div id="agent-gl-container">
         <div id="empty-agent-prompt">
           <h2>Let's get started</h2>
-          <p>You don't have any agents running yet.<br>Press below to create your first agent for this ClaudeSession session.</p>
+          <p>You don't have any agents running yet.<br>Press below to create your first agent.</p>
           <button id="btn-empty-new-agent">Create New Agent</button>
         </div>
       </div>
-      <div id="agent-status-bar">
+      <div id="agents-statusbar" class="panel-statusbar">
         <select id="terminal-zoom-select" title="Terminal zoom level">
-          <option value="75">75%</option>
-          <option value="85">85%</option>
-          <option value="100" selected>100%</option>
-          <option value="115">115%</option>
-          <option value="130">130%</option>
-          <option value="150">150%</option>
+          <option value="75">75%</option><option value="85">85%</option>
+          <option value="100" selected>100%</option><option value="115">115%</option>
+          <option value="130">130%</option><option value="150">150%</option>
         </select>
       </div>
     </div>
-
-    <!-- Resizable splitter -->
+    <!-- Splitter -->
     <div id="panel-splitter"></div>
-
-    <!-- Session Comms panel + broadcast input -->
-    <div id="message-panel">
-      <div id="message-panel-header">
-        <span>Discussion</span>
-        <div id="message-panel-controls">
-          <button id="btn-archive-messages" title="Archive discussion">Archive</button>
-          <button id="btn-close-messages">&times;</button>
-        </div>
-      </div>
-      <div id="message-port-bar">
-        <label for="port-input">Port:</label>
-        <input type="number" id="port-input" min="1024" max="65535">
-        <button id="btn-restart-port">Restart</button>
-      </div>
-      <div id="message-list"></div>
-      <div id="master-bar">
-        <textarea id="master-input" placeholder="Broadcast to all agents... (Enter to send, Shift+Enter for newline)" rows="6"></textarea>
-        <button id="btn-broadcast">Send</button>
-      </div>
-      <div id="message-status-bar">
-        <select id="zoom-select" title="Message zoom level">
-          <option value="75">75%</option>
-          <option value="85">85%</option>
-          <option value="100" selected>100%</option>
-          <option value="115">115%</option>
-          <option value="130">130%</option>
-          <option value="150">150%</option>
-        </select>
-      </div>
-    </div>
-
-    <!-- Tasks panel -->
-    <div id="task-panel" class="hidden">
-      <div id="task-panel-header">
-        <span>Tasks</span>
-        <div id="task-panel-controls">
-          <button id="btn-close-tasks">&times;</button>
-        </div>
-      </div>
-      <div id="task-list"></div>
-      <div id="task-bar">
-        <textarea id="task-input" placeholder="Add a task... (Enter to add)" rows="3"></textarea>
-        <button id="btn-add-task">Add</button>
-      </div>
-    </div>
+    <!-- Right dock (Discussion + Tasks) -->
+    <div id="dock-container"></div>
   </div>
 
   <!-- New Agent Modal -->
@@ -147,7 +94,7 @@
         <div class="modal-info-content">
           <label class="modal-info-label">
             <input type="checkbox" id="modal-auto-permissions" checked>
-            <span>Agents created in ClaudeSession will be initialised with permission to use <code>curl</code> and <code>printf</code> so that they can communicate with each other out of the box. If you prefer not to allow these permissions automatically, uncheck this box. You will then need to grant permission manually in the agent consoles before the agents can talk to each other through the Session Comms panel.</span>
+            <span>Agents created in ClaudeSession will be initialised with permission to use <code>curl</code> and <code>printf</code> so that they can communicate with each other out of the box.</span>
           </label>
         </div>
       </div>
