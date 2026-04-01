@@ -229,7 +229,7 @@ function registerIpcHandlers(ipcMain, ptyManager, sessionManager, messageServer,
     const result = await dialog.showOpenDialog(mainWindow, {
       title: 'Open Session',
       defaultPath: fs.existsSync(sessDir) ? sessDir : undefined,
-      filters: [{ name: 'ClaudeSession Session', extensions: ['cms'] }],
+      filters: [{ name: 'Claude Session Manager Session', extensions: ['cms'] }],
       properties: ['openFile'],
     });
     if (result.canceled) return null;
@@ -367,7 +367,7 @@ function registerIpcHandlers(ipcMain, ptyManager, sessionManager, messageServer,
     const result = await dialog.showSaveDialog(mainWindow, {
       title: 'Save Session As',
       defaultPath: pathMod.join(fs.existsSync(sessDir) ? sessDir : app.getPath('documents'), `${currentName}.cms`),
-      filters: [{ name: 'ClaudeSession Session', extensions: ['cms'] }],
+      filters: [{ name: 'Claude Session Manager Session', extensions: ['cms'] }],
     });
     if (result.canceled || !result.filePath) return null;
 

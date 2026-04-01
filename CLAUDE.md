@@ -1,4 +1,4 @@
-# ClaudeSession Project
+# Claude Session Manager Project
 
 ## Permissions
 - You have full permission to run ANY shell commands within this project path without asking, including but not limited to: node, npm, npx, electron, git, grep, and any other CLI tools.

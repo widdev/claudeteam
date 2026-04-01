@@ -190,13 +190,13 @@ function buildMenu(mainWindow, sessionManager, ptyManager, messageServer) {
       label: 'Help',
       submenu: [
         {
-          label: `About ClaudeSession`,
+          label: `About Claude Session Manager`,
           click: () => {
             const { dialog } = require('electron');
             dialog.showMessageBox(mainWindow, {
               type: 'info',
-              title: 'About ClaudeSession',
-              message: 'ClaudeSession',
+              title: 'About Claude Session Manager',
+              message: 'Claude Session Manager',
               detail: `Multi-agent Claude Code session manager.\n\nVersion ${app.getVersion()}`,
             });
           },
