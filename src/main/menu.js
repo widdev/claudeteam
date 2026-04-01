@@ -126,6 +126,11 @@ function buildMenu(mainWindow, sessionManager, ptyManager, messageServer) {
         },
         { type: 'separator' },
         {
+          label: 'Reinitialise Agents',
+          enabled: sessionIsOpen && hasAgents,
+          click: () => mainWindow.webContents.send('menu:reinitialiseAgents'),
+        },
+        {
           label: 'Remove All Agents',
           enabled: sessionIsOpen && hasAgents,
           click: () => mainWindow.webContents.send('menu:removeAllAgents'),

@@ -1,7 +1,7 @@
 {
   "name": "claude-session",
-  "version": "1.0.11",
-"description": "Multi-agent Claude Code session manager with inter-agent messaging",
+  "version": "1.0.16",
+  "description": "Multi-agent Claude Code session manager with inter-agent messaging",
   "author": "Claude Session Manager",
   "main": "src/main/main.js",
   "scripts": {
@@ -11,7 +11,7 @@
     "dist:dir": "npm run build:renderer && electron-builder --win --dir"
   },
   "build": {
-"appId": "com.claude-session-manager.app",
+    "appId": "com.claude-session-manager.app",
     "npmRebuild": false,
     "productName": "Claude Session Manager",
     "directories": {
@@ -26,11 +26,15 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": null

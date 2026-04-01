@@ -16,12 +16,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
 
   // Dialog
+  showInfoDialog: (title, message) => ipcRenderer.invoke('dialog:showInfo', title, message),
   openDirectoryDialog: () => ipcRenderer.invoke('dialog:openDirectory'),
   saveFileDialog: (opts) => ipcRenderer.invoke('dialog:saveFile', opts),
   writeTextFile: (filePath, content) => ipcRenderer.invoke('file:writeText', filePath, content),
 
   // Agents
   listAgents: () => ipcRenderer.invoke('agents:list'),
+  reinitialiseAgents: () => ipcRenderer.invoke('agents:reinitialise'),
   listSavedAgents: () => ipcRenderer.invoke('agents:listSaved'),
   removeSavedAgent: (id) => ipcRenderer.invoke('agents:remove', id),
 

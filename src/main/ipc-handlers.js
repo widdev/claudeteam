@@ -37,8 +37,8 @@ function isTemporarySession(sessionPath) {
 
 function registerIpcHandlers(ipcMain, ptyManager, sessionManager, messageServer, mainWindow) {
   // --- PTY ---
-  ipcMain.handle('pty:create', (event, { agentId, name, cwd, autoPermissions }) => {
-    const agent = ptyManager.create(agentId, name, cwd, messageServer.port, { autoPermissions });
+  ipcMain.handle('pty:create', (event, { agentId, name, cwd, autoPermissions, updateClaudeMd }) => {
+    const agent = ptyManager.create(agentId, name, cwd, messageServer.port, { autoPermissions, updateClaudeMd });
 
     // Forward PTY data to renderer
     ptyManager.onData(agent.id, (data) => {
@@ -99,6 +99,10 @@ function registerIpcHandlers(ipcMain, ptyManager, sessionManager, messageServer,
   });
 
   // --- Dialog ---
+  ipcMain.handle('dialog:showInfo', async (event, title, message) => {
+    await dialog.showMessageBox(mainWindow, { type: 'info', title, message, buttons: ['OK'] });
+  });
+
   ipcMain.handle('dialog:openDirectory', async () => {
     const result = await dialog.showOpenDialog(mainWindow, {
       properties: ['openDirectory'],
@@ -125,6 +129,10 @@ function registerIpcHandlers(ipcMain, ptyManager, sessionManager, messageServer,
   // --- Agents ---
   ipcMain.handle('agents:list', () => {
     return ptyManager.getAll();
+  });
+
+  ipcMain.handle('agents:reinitialise', () => {
+    ptyManager.reinitialiseAll();
   });
 
   ipcMain.handle('agents:listSaved', () => {

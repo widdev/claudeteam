@@ -53,7 +53,7 @@ class PtyManager {
     });
 
     const agentCwd = cwd || os.homedir();
-    const entry = { process: ptyProcess, name, cwd: agentCwd, id };
+    const entry = { process: ptyProcess, name, cwd: agentCwd, id, configFileName: null };
     this.ptys.set(id, entry);
 
     ptyProcess.onData((data) => {
@@ -72,65 +72,169 @@ class PtyManager {
     // Drop agent-specific config file and auto-launch claude
     const shortId = id.substring(0, 8);
     const configFileName = `claudesession-${shortId}.md`;
+    entry.configFileName = configFileName;
     this._writeConfigFile(agentCwd, serverPort, id, name, configFileName);
     if (options.autoPermissions !== false) {
       this._writePermissions(agentCwd, serverPort);
     }
+
+    // If allowed, inject instructions into CLAUDE.md so Claude reads them on startup
+    const useClaudeMd = options.updateClaudeMd !== false;
+    entry.useClaudeMd = useClaudeMd;
+    if (useClaudeMd) {
+      this._injectClaudeMd(agentCwd, configFileName, id);
+    }
+
+    // Clean up CLAUDE.md block and config file when agent exits
+    ptyProcess.onExit(() => {
+      if (useClaudeMd) {
+        this._removeClaudeMd(agentCwd, id);
+      }
+      this._removeConfigFile(agentCwd, configFileName);
+    });
+
+    const claudeLaunchTime = Date.now() + 1000; // when claude\r will be sent
     setTimeout(() => {
       ptyProcess.write('claude\r');
-    }, 500);
+    }, 1000);
 
-    // Once claude is ready, send prompt to read the agent-specific config file
-    this._sendReadPrompt(ptyProcess, configFileName);
+    // PTY-based prompt injection as fallback (or primary if CLAUDE.md not used)
+    this._sendReadPrompt(ptyProcess, configFileName, claudeLaunchTime);
 
     return { id, name, cwd: agentCwd };
   }
 
-  _sendReadPrompt(ptyProcess, configFileName) {
+  _sendReadPrompt(ptyProcess, configFileName, claudeLaunchTime) {
     let dataBuffer = '';
     let promptSent = false;
     let trustHandled = false;
+    let idleTimer = null;
+    // Don't allow idle-based detection to fire until Claude Code has had
+    // at least 5 seconds to start up (from when claude\r is sent).
+    const minReadyTime = (claudeLaunchTime || Date.now()) + 5000;
+
+    const sendPrompt = () => {
+      if (promptSent) return;
+      promptSent = true;
+      disposable.dispose();
+      if (idleTimer) clearTimeout(idleTimer);
+      clearTimeout(fallbackTimer);
+
+      const prompt = `Read the file ${configFileName} in your current working directory. It contains your agent configuration and communication instructions. Follow all instructions in that file.`;
+
+      ptyProcess.write(prompt + '\r');
+    };
 
     const disposable = ptyProcess.onData((data) => {
       if (promptSent) return;
       dataBuffer += data.toString();
 
       // Auto-accept the "trust this folder" prompt if it appears
-      // Claude Code asks this before showing the main prompt
       if (!trustHandled && (
         dataBuffer.includes('Trust') || dataBuffer.includes('trust') ||
         dataBuffer.includes('Do you want to proceed')
       )) {
-        // Check it's actually a trust/proceed question (not just text containing "trust")
         const lower = dataBuffer.toLowerCase();
         if (lower.includes('trust') && (lower.includes('y/n') || lower.includes('yes') || lower.includes('folder') || lower.includes('directory') || lower.includes('proceed'))) {
           trustHandled = true;
           setTimeout(() => {
             ptyProcess.write('y\r');
           }, 300);
-          // Reset buffer to continue looking for the actual prompt
           dataBuffer = '';
           return;
         }
       }
 
-      // Wait for Claude Code's prompt box character ╭ (U+256D)
-      if (dataBuffer.includes('\u256d')) {
-        promptSent = true;
-        disposable.dispose();
-        clearTimeout(fallbackTimer);
-
-        const prompt = `Read the file ${configFileName} in your current working directory. It contains your agent configuration and communication instructions. Follow all instructions in that file.`;
-
-        setTimeout(() => {
-          ptyProcess.write(prompt + '\r');
-        }, 800);
+      // Immediate detection: ╭ (U+256D) — Claude Code's prompt box
+      if (dataBuffer.includes('\u256d') || dataBuffer.includes('\xe2\x95\xad')) {
+        sendPrompt();
+        return;
       }
+
+      // Idle-based fallback: once output settles for 2s AND we're past the
+      // minimum startup time, send the prompt. This handles cases where ╭
+      // is not detected due to encoding changes in newer Claude Code versions.
+      if (idleTimer) clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        const now = Date.now();
+        if (now >= minReadyTime) {
+          sendPrompt();
+        }
+        // If too early, do nothing — next data chunk will restart the timer
+      }, 2000);
     });
 
+    // Hard fallback — shouldn't normally be needed
     const fallbackTimer = setTimeout(() => {
-      if (!promptSent) disposable.dispose();
+      if (!promptSent) {
+        disposable.dispose();
+        if (idleTimer) clearTimeout(idleTimer);
+      }
     }, 60000);
+  }
+
+  _injectClaudeMd(cwd, configFileName, agentId) {
+    const claudeMdPath = path.join(cwd, 'CLAUDE.md');
+    const marker = `CLAUDE-SESSION-MANAGER:${agentId}`;
+    const block = `\n<!-- ${marker} -->\nIMPORTANT: Read the file ${configFileName} in this directory BEFORE doing anything else. It contains your agent identity and communication instructions for Claude Session Manager. Follow all instructions in that file.\n<!-- /${marker} -->\n`;
+
+    try {
+      let content = '';
+      let existed = false;
+      if (fs.existsSync(claudeMdPath)) {
+        content = fs.readFileSync(claudeMdPath, 'utf-8');
+        existed = true;
+      }
+
+      // Remove any existing block for this agent (e.g. from a crash)
+      const blockRegex = new RegExp(`\\n?<!-- ${marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} -->[\\s\\S]*?<!-- \\/${marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} -->\\n?`, 'g');
+      content = content.replace(blockRegex, '');
+
+      content += block;
+      fs.writeFileSync(claudeMdPath, content, 'utf-8');
+
+      // Track whether we created the file so we can delete it on cleanup
+      const entry = this.ptys.get(agentId);
+      if (entry) {
+        entry.claudeMdCreated = !existed;
+      }
+    } catch (err) {
+      console.error('Failed to inject CLAUDE.md:', err.message);
+    }
+  }
+
+  _removeClaudeMd(cwd, agentId) {
+    const claudeMdPath = path.join(cwd, 'CLAUDE.md');
+    const marker = `CLAUDE-SESSION-MANAGER:${agentId}`;
+
+    try {
+      if (!fs.existsSync(claudeMdPath)) return;
+      let content = fs.readFileSync(claudeMdPath, 'utf-8');
+
+      const blockRegex = new RegExp(`\\n?<!-- ${marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} -->[\\s\\S]*?<!-- \\/${marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} -->\\n?`, 'g');
+      content = content.replace(blockRegex, '');
+
+      // If the file is now empty (or just whitespace) and we created it, delete it
+      if (content.trim() === '') {
+        fs.unlinkSync(claudeMdPath);
+      } else {
+        fs.writeFileSync(claudeMdPath, content, 'utf-8');
+      }
+    } catch (err) {
+      console.error('Failed to clean up CLAUDE.md:', err.message);
+    }
+  }
+
+  _removeConfigFile(cwd, configFileName) {
+    if (!configFileName) return;
+    try {
+      const filePath = path.join(cwd, configFileName);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    } catch (err) {
+      console.error('Failed to remove config file:', err.message);
+    }
   }
 
   _writeConfigFile(cwd, serverPort, agentId, agentName, configFileName) {
@@ -293,6 +397,20 @@ Acknowledge that you have read this configuration by sending a brief message to 
     }
   }
 
+  reinitialise(agentId) {
+    const entry = this.ptys.get(agentId);
+    if (!entry || !entry.configFileName) return false;
+    const prompt = `Read the file ${entry.configFileName} in your current working directory. It contains your agent configuration and communication instructions. Follow all instructions in that file.`;
+    entry.process.write(prompt + '\r');
+    return true;
+  }
+
+  reinitialiseAll() {
+    for (const [id] of this.ptys) {
+      this.reinitialise(id);
+    }
+  }
+
   write(agentId, data) {
     const entry = this.ptys.get(agentId);
     if (entry) {
@@ -325,6 +443,10 @@ Acknowledge that you have read this configuration by sending a brief message to 
   kill(agentId) {
     const entry = this.ptys.get(agentId);
     if (entry) {
+      if (entry.useClaudeMd) {
+        this._removeClaudeMd(entry.cwd, agentId);
+      }
+      this._removeConfigFile(entry.cwd, entry.configFileName);
       entry.process.kill();
       this.ptys.delete(agentId);
       this.dataListeners.delete(agentId);

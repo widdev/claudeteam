@@ -260,10 +260,18 @@ export function createAgentPanel(container, agentId, agentName, agentCwd, glCont
   terminal.loadAddon(fitAddon);
   terminal.open(termContainer);
 
+  // Fit immediately, then again after GL finishes layout.
+  // The first agent has no GL root yet, so its container may have 0 dimensions
+  // on the initial requestAnimationFrame — the delayed fit catches that.
   requestAnimationFrame(() => {
     fitAddon.fit();
     window.electronAPI.resizeAgent(agentId, terminal.cols, terminal.rows);
   });
+  setTimeout(() => {
+    fitAddon.fit();
+    window.electronAPI.resizeAgent(agentId, terminal.cols, terminal.rows);
+    terminal.refresh(0, terminal.rows - 1);
+  }, 300);
 
   // Ctrl+MouseWheel to change terminal zoom (all agents share the same level)
   termContainer.addEventListener('wheel', (e) => {

@@ -228,15 +228,21 @@ function initPanelSplitter() {
 }
 
 // ── Add agent ──
-async function addAgent(agentId, agentName, agentCwd, agentColorId, autoPermissions) {
+async function addAgent(agentId, agentName, agentCwd, agentColorId, autoPermissions, updateClaudeMd) {
   if (!agentLayout) return null;
   const colorId = assignAgentColor(agentColorId);
-  const agent = await window.electronAPI.createAgent({ agentId, name: agentName, cwd: agentCwd, autoPermissions: autoPermissions !== false });
+  const agent = await window.electronAPI.createAgent({ agentId, name: agentName, cwd: agentCwd, autoPermissions: autoPermissions !== false, updateClaudeMd: updateClaudeMd !== false });
   const config = { type: 'component', componentType: 'agent', title: agent.name, isClosable: true,
     componentState: { agentId: agent.id, agentName: agent.name, agentCwd: agent.cwd, agentColorId: colorId } };
   if (!agentLayout.rootItem) {
     const rootType = agentLayoutMode === 'tabs' ? ItemType.stack : agentLayoutMode === 'stacked' ? ItemType.column : ItemType.row;
     agentLayout.loadLayout({ root: { type: rootType, content: [config] } });
+    // First agent: GL just created the root so dimensions aren't ready yet.
+    // Force a layout recalculation after the browser has a chance to paint.
+    requestAnimationFrame(() => {
+      agentLayout.updateSizeFromContainer();
+      setTimeout(() => { agentLayout.updateSizeFromContainer(); fitAll(); }, 200);
+    });
   } else {
     if (agentLayoutMode === 'tabs') agentLayout.addComponent('agent', config.componentState, agent.name);
     else agentLayout.addItemAtLocation(config, [{ typeId: 3 }]);
@@ -247,12 +253,16 @@ async function addAgent(agentId, agentName, agentCwd, agentColorId, autoPermissi
 
 function nextAgentName() { return `Agent ${getActiveAgents().size + 1}`; }
 
+const CLAUDE_MD_INFO_TEXT = 'Unchecking this box will switch to using a separate file for the agent and tell it to use that. This should work, but if the agent doesn\'t get the prompt for any reason, you will need to reinitialise the agent using the Agents menu.';
+
 function showNewAgentModal() {
   return new Promise((resolve) => {
     const modal = document.getElementById('new-agent-modal');
     const nameInput = document.getElementById('modal-agent-name');
     const pathDisplay = document.getElementById('modal-agent-path');
     const swatchContainer = document.getElementById('modal-color-swatches');
+    const claudeMdCheckbox = document.getElementById('modal-update-claude-md');
+    claudeMdCheckbox.checked = true;
     nameInput.value = nextAgentName(); pathDisplay.textContent = ''; pathDisplay.dataset.path = ''; pathDisplay.style.color = '';
     swatchContainer.innerHTML = '';
     const defaultColorId = getNextDefaultColor(); let selectedColorId = defaultColorId;
@@ -264,23 +274,33 @@ function showNewAgentModal() {
     });
     modal.classList.remove('hidden'); nameInput.focus(); nameInput.select();
     let resolved = false;
-    function finish(r) { if (resolved) return; resolved = true; modal.classList.add('hidden'); document.removeEventListener('keydown', onKd); resolve(r); }
+    function finish(r) { if (resolved) return; resolved = true; modal.classList.add('hidden'); document.removeEventListener('keydown', onKd); claudeMdCheckbox.removeEventListener('change', onClaudeMdChange); resolve(r); }
     function onKd(e) { if (e.key === 'Escape') finish(null); }
     document.addEventListener('keydown', onKd);
+    function showClaudeMdInfo() {
+      window.electronAPI.showInfoDialog('CLAUDE.md', CLAUDE_MD_INFO_TEXT);
+    }
+    function onClaudeMdChange() {
+      if (!claudeMdCheckbox.checked) {
+        showClaudeMdInfo();
+      }
+    }
+    claudeMdCheckbox.addEventListener('change', onClaudeMdChange);
     function onModalClick(e) {
-      if (e.target.id === 'modal-select-dir') { window.electronAPI.openDirectoryDialog().then((d) => { if (d) { pathDisplay.textContent = d; pathDisplay.dataset.path = d; pathDisplay.title = d; pathDisplay.style.color = ''; } }); }
+      if (e.target.id === 'modal-claude-md-info') { showClaudeMdInfo(); }
+      else if (e.target.id === 'modal-select-dir') { window.electronAPI.openDirectoryDialog().then((d) => { if (d) { pathDisplay.textContent = d; pathDisplay.dataset.path = d; pathDisplay.title = d; pathDisplay.style.color = ''; } }); }
       else if (e.target.id === 'modal-create-btn') {
         const name = nameInput.value.trim() || nextAgentName(); const dir = pathDisplay.dataset.path;
         if (!dir) { pathDisplay.textContent = 'Please select a directory'; pathDisplay.style.color = '#f44747'; return; }
         modal.removeEventListener('click', onModalClick);
-        finish({ name, dir, colorId: selectedColorId, autoPermissions: document.getElementById('modal-auto-permissions').checked });
+        finish({ name, dir, colorId: selectedColorId, autoPermissions: document.getElementById('modal-auto-permissions').checked, updateClaudeMd: claudeMdCheckbox.checked });
       } else if (e.target.id === 'modal-cancel-btn') { modal.removeEventListener('click', onModalClick); finish(null); }
     }
     modal.addEventListener('click', onModalClick);
   });
 }
 
-async function handleNewAgent() { const r = await showNewAgentModal(); if (!r) return; await addAgent(null, r.name, r.dir, r.colorId, r.autoPermissions); }
+async function handleNewAgent() { const r = await showNewAgentModal(); if (!r) return; await addAgent(null, r.name, r.dir, r.colorId, r.autoPermissions, r.updateClaudeMd); }
 async function handleRestoreAgent(agent) { if (!await window.electronAPI.isSessionOpen()) return; await addAgent(agent.id, agent.name, agent.cwd); }
 
 // ── Session operations ──
@@ -369,6 +389,7 @@ document.addEventListener('DOMContentLoaded', () => {
   window.electronAPI.onMenuEvent('menu:closeSession', async () => { if (await closeCurrentSession()) { enterNoSessionState(); window.electronAPI.rebuildMenu(); } });
   window.electronAPI.onMenuEvent('menu:renameSession', async () => { const cn = await window.electronAPI.getSessionName() || ''; const n = await promptSessionName('Rename Session', cn); if (!n) return; await window.electronAPI.renameSession(n); updateSessionLabel(await window.electronAPI.getSessionPath(), n); window.electronAPI.rebuildMenu(); });
   window.electronAPI.onMenuEvent('menu:newAgent', async () => { if (!await window.electronAPI.isSessionOpen()) { const sp = await window.electronAPI.ensureSessionOpen(); if (!sp) return; enterSessionState(); updateSessionLabel(sp); } await handleNewAgent(); });
+  window.electronAPI.onMenuEvent('menu:reinitialiseAgents', () => window.electronAPI.reinitialiseAgents());
   window.electronAPI.onMenuEvent('menu:removeAllAgents', removeAllAgents);
   window.electronAPI.onMenuEvent('menu:setLayout', setAgentLayoutMode);
   window.electronAPI.onMenuEvent('menu:showDiscussion', () => addDockPanelIfMissing('discussion', 'Discussion'));
