@@ -229,8 +229,17 @@ curl -s http://localhost:${serverPort}/api/tasks
 
 If you receive a message or find a task addressed to you, read it and act on it immediately. Messages from other agents or the user may contain urgent instructions, status updates, or requests that should interrupt your current work. Always prioritise incoming messages and tasks.
 
+## Responding via the Discussion Panel — IMPORTANT
+When the user sends you a broadcast message or an @mention, you should **reply using the messaging API** so your response appears in the Discussion panel where the user and other agents can see it. Do this by sending a message back:
+
+\`\`\`bash
+printf '{"from":"${agentId}","to":"all","content":"your response here"}' | curl -s -X POST http://localhost:${serverPort}/api/messages -H "Content-Type: application/json" -d @-
+\`\`\`
+
+Use \`"to": "all"\` for general responses that everyone should see, or a specific agent ID for private replies. Always respond via the Discussion panel when replying to broadcast messages — do not just print your response in the terminal.
+
 ## Instructions
-Acknowledge that you have read this configuration by responding briefly with your name. Then check for any messages addressed to you. After that, await further instructions from the user.
+Acknowledge that you have read this configuration by sending a brief message to the Discussion panel identifying yourself as \`${agentName}\`. Then check for any messages and tasks addressed to you. After that, await further instructions from the user.
 `;
 
     try {

@@ -982,6 +982,19 @@ button:hover {
   color: var(--text-primary) !important;
 }
 
+.modal-btn-danger {
+  background: var(--danger) !important;
+  color: white !important;
+  border: none !important;
+  padding: 8px 20px !important;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.modal-btn-danger:hover {
+  opacity: 0.85;
+}
+
 /* ─── Aside messages (#AGENT direct) ──────────────────────────────── */
 .message-entry.message-aside {
   background: var(--broadcast-bg);

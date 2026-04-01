@@ -4,3 +4,5 @@ data/*.sqlite
 *.sqlite
 .env
 dist/
+CLAUDE.md
+.claude/

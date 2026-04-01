@@ -49,6 +49,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openSessionFile: (filePath) => ipcRenderer.invoke('session:openFile', filePath),
   listRecentSessions: () => ipcRenderer.invoke('session:listRecent'),
   saveSession: (name) => ipcRenderer.invoke('session:save', name),
+  saveSessionAs: () => ipcRenderer.invoke('session:saveAs'),
   renameSession: (name) => ipcRenderer.invoke('session:rename', name),
   getSessionName: () => ipcRenderer.invoke('session:getName'),
   closeSession: (options) => ipcRenderer.invoke('session:close', options),

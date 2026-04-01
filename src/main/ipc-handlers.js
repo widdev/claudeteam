@@ -2,6 +2,7 @@ const { dialog, app } = require('electron');
 const pathMod = require('path');
 const fs = require('fs');
 const { restartMessageServer } = require('./message-server');
+const { addRecentSession } = require('./menu');
 
 // --- Settings helpers ---
 function getSettingsPath() {
@@ -238,6 +239,8 @@ function registerIpcHandlers(ipcMain, ptyManager, sessionManager, messageServer,
 
     const agents = sessionManager.getAgents();
     const messages = sessionManager.getMessages();
+    const name = sessionManager.getMeta('sessionName') || pathMod.basename(result.filePaths[0], '.cms');
+    addRecentSession(result.filePaths[0], name);
     return { filePath: result.filePaths[0], agents, messages };
   });
 
@@ -247,6 +250,8 @@ function registerIpcHandlers(ipcMain, ptyManager, sessionManager, messageServer,
     await sessionManager.open(filePath);
     const agents = sessionManager.getAgents();
     const messages = sessionManager.getMessages();
+    const name = sessionManager.getMeta('sessionName') || pathMod.basename(filePath, '.cms');
+    addRecentSession(filePath, name);
     return { filePath, agents, messages };
   });
 
@@ -319,6 +324,7 @@ function registerIpcHandlers(ipcMain, ptyManager, sessionManager, messageServer,
       }
       sessionManager.saveTo(sessionPath);
       const name = sessionManager.getMeta('sessionName') || '';
+      addRecentSession(sessionPath, name);
       return { filePath: sessionPath, sessionName: name };
     }
 
@@ -340,7 +346,37 @@ function registerIpcHandlers(ipcMain, ptyManager, sessionManager, messageServer,
     }
 
     sessionManager.saveTo(filePath);
+    addRecentSession(filePath, sessionName);
     return { filePath, sessionName };
+  });
+
+  ipcMain.handle('session:saveAs', async () => {
+    if (!sessionManager.isOpen()) return null;
+
+    // Save agent state first
+    const agents = ptyManager.getAll();
+    for (const agent of agents) {
+      sessionManager.saveAgent(agent);
+    }
+    if (mainWindow) {
+      sessionManager.saveMeta('windowBounds', JSON.stringify(mainWindow.getBounds()));
+    }
+
+    const sessDir = getSessionsDir();
+    const currentName = sessionManager.getMeta('sessionName') || 'Session';
+    const result = await dialog.showSaveDialog(mainWindow, {
+      title: 'Save Session As',
+      defaultPath: pathMod.join(fs.existsSync(sessDir) ? sessDir : app.getPath('documents'), `${currentName}.cms`),
+      filters: [{ name: 'ClaudeSession Session', extensions: ['cms'] }],
+    });
+    if (result.canceled || !result.filePath) return null;
+
+    const filePath = result.filePath;
+    const name = pathMod.basename(filePath, '.cms');
+    sessionManager.saveMeta('sessionName', name);
+    sessionManager.saveTo(filePath);
+    addRecentSession(filePath, name);
+    return { filePath, sessionName: name };
   });
 
   ipcMain.handle('session:rename', async (event, newName) => {

@@ -3,7 +3,7 @@ import 'golden-layout/dist/css/goldenlayout-base.css';
 
 import { GoldenLayout, ItemType } from 'golden-layout';
 import { createAgentPanel, removeAgentPanel, writeToTerminal, getActiveAgents, fitAll, assignAgentColor, resetColorIndex, getNextDefaultColor, getThemeColors, getColorHex, refreshAgentColors, initTerminalFontSize, AGENT_COLOR_DEFS } from './agent-panel.js';
-import { initMessagePanel, initMasterInput, loadMessages } from './message-panel.js';
+import { initMessagePanel, initMasterInput, initGlobalMessageListeners, loadMessages } from './message-panel.js';
 import { initTaskPanel, loadTasks } from './task-panel.js';
 import { initAgentDropdown } from './agent-dropdown.js';
 
@@ -34,6 +34,7 @@ function enterSessionState() {
   document.getElementById('welcome-screen').classList.add('hidden');
   document.getElementById('main-area').classList.remove('hidden');
   document.getElementById('agent-dropdown-container').classList.remove('hidden');
+  document.getElementById('btn-toggle-layout').classList.remove('hidden');
   if (dockLayout) dockLayout.loadLayout(getDefaultDockConfig());
   updateEmptyState();
 }
@@ -42,6 +43,7 @@ function enterNoSessionState() {
   document.getElementById('welcome-screen').classList.remove('hidden');
   document.getElementById('main-area').classList.add('hidden');
   document.getElementById('agent-dropdown-container').classList.add('hidden');
+  document.getElementById('btn-toggle-layout').classList.add('hidden');
   document.getElementById('session-label').textContent = '';
   document.getElementById('session-label').title = '';
   document.title = 'Claude Session Manager';
@@ -312,6 +314,7 @@ function addDockPanelIfMissing(type, title) {
 document.addEventListener('DOMContentLoaded', () => {
   initAgentLayout();
   initDockLayout();
+  initGlobalMessageListeners();
   initAgentDropdown(handleNewAgent, handleRestoreAgent);
   initPanelSplitter();
   initTerminalFontSize();
@@ -359,7 +362,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (await window.electronAPI.isSessionTemp()) { const n = await promptSessionName('Save Session', ''); if (!n) return; const r = await window.electronAPI.saveSession(n); if (r) { updateSessionLabel(r.filePath, r.sessionName); window.electronAPI.rebuildMenu(); } }
     else { const r = await window.electronAPI.saveSession(); if (r) updateSessionLabel(r.filePath, r.sessionName); }
   });
-  window.electronAPI.onMenuEvent('menu:closeSession', async () => { if (await closeCurrentSession()) enterNoSessionState(); });
+  window.electronAPI.onMenuEvent('menu:saveSessionAs', async () => {
+    const r = await window.electronAPI.saveSessionAs();
+    if (r) { updateSessionLabel(r.filePath, r.sessionName); window.electronAPI.rebuildMenu(); }
+  });
+  window.electronAPI.onMenuEvent('menu:closeSession', async () => { if (await closeCurrentSession()) { enterNoSessionState(); window.electronAPI.rebuildMenu(); } });
   window.electronAPI.onMenuEvent('menu:renameSession', async () => { const cn = await window.electronAPI.getSessionName() || ''; const n = await promptSessionName('Rename Session', cn); if (!n) return; await window.electronAPI.renameSession(n); updateSessionLabel(await window.electronAPI.getSessionPath(), n); window.electronAPI.rebuildMenu(); });
   window.electronAPI.onMenuEvent('menu:newAgent', async () => { if (!await window.electronAPI.isSessionOpen()) { const sp = await window.electronAPI.ensureSessionOpen(); if (!sp) return; enterSessionState(); updateSessionLabel(sp); } await handleNewAgent(); });
   window.electronAPI.onMenuEvent('menu:removeAllAgents', removeAllAgents);

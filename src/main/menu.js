@@ -6,37 +6,40 @@ function getSessionsDir() {
   return path.join(app.getPath('userData'), 'ClaudeSession', 'Sessions');
 }
 
+function getRecentSessionsFile() {
+  return path.join(app.getPath('userData'), 'recent-sessions.json');
+}
+
+function loadRecentSessions() {
+  const filePath = getRecentSessionsFile();
+  try {
+    if (fs.existsSync(filePath)) {
+      return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    }
+  } catch (e) { /* ignore */ }
+  return [];
+}
+
+function saveRecentSessions(entries) {
+  fs.writeFileSync(getRecentSessionsFile(), JSON.stringify(entries, null, 2), 'utf-8');
+}
+
+function addRecentSession(sessionPath, displayName) {
+  if (!sessionPath) return;
+  let entries = loadRecentSessions();
+  // Remove existing entry for same path
+  entries = entries.filter(e => e.path !== sessionPath);
+  // Add at front
+  entries.unshift({ path: sessionPath, name: displayName || path.basename(sessionPath, '.cms'), timestamp: Date.now() });
+  // Keep max 15
+  entries = entries.slice(0, 15);
+  saveRecentSessions(entries);
+}
+
 function getRecentSessions() {
-  const sessDir = getSessionsDir();
-  if (!fs.existsSync(sessDir)) return [];
-  return fs.readdirSync(sessDir)
-    .filter(f => f.endsWith('.cms'))
-    .map(f => {
-      const fullPath = path.join(sessDir, f);
-      const stat = fs.statSync(fullPath);
-      const isTemp = f.startsWith('temp');
-      let displayName;
-      if (isTemp) {
-        const match = f.match(/^temp(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})/);
-        if (match) {
-          displayName = `Unsaved Session ${match[3]}.${match[2]}.${match[1]} ${match[4]}:${match[5]}`;
-        } else {
-          const oldMatch = f.match(/^temp(\d{4})(\d{2})(\d{2})/);
-          if (oldMatch) {
-            displayName = `Unsaved Session ${oldMatch[3]}.${oldMatch[2]}.${oldMatch[1]}`;
-          } else {
-            displayName = f.replace('.cms', '');
-          }
-        }
-        const counterMatch = f.match(/_(\d{4})_(\d+)\.cms$/);
-        if (counterMatch) displayName += ` (${counterMatch[2]})`;
-      } else {
-        displayName = f.replace('.cms', '');
-      }
-      return { path: fullPath, name: displayName, modified: stat.mtimeMs };
-    })
-    .sort((a, b) => b.modified - a.modified)
-    .slice(0, 15);
+  const entries = loadRecentSessions();
+  // Filter out files that no longer exist
+  return entries.filter(e => fs.existsSync(e.path));
 }
 
 // Legacy — kept for export compatibility but no longer drives menu state
@@ -61,14 +64,8 @@ function buildMenu(mainWindow, sessionManager, ptyManager, messageServer) {
         {
           label: 'Clear Recent Sessions',
           click: () => {
-            const sessDir = getSessionsDir();
-            if (fs.existsSync(sessDir)) {
-              const files = fs.readdirSync(sessDir).filter(f => f.endsWith('.cms') && f.startsWith('temp'));
-              for (const f of files) {
-                try { fs.unlinkSync(path.join(sessDir, f)); } catch (e) { /* ignore */ }
-              }
-              buildMenu(mainWindow, sessionManager, ptyManager, messageServer);
-            }
+            saveRecentSessions([]);
+            buildMenu(mainWindow, sessionManager, ptyManager, messageServer);
           },
         },
       ]
@@ -104,7 +101,14 @@ function buildMenu(mainWindow, sessionManager, ptyManager, messageServer) {
           click: () => mainWindow.webContents.send('menu:saveSession'),
         },
         {
+          label: 'Save Session As...',
+          accelerator: 'CmdOrCtrl+Shift+S',
+          enabled: sessionIsOpen,
+          click: () => mainWindow.webContents.send('menu:saveSessionAs'),
+        },
+        {
           label: 'Close Session',
+          enabled: sessionIsOpen,
           click: () => mainWindow.webContents.send('menu:closeSession'),
         },
         { type: 'separator' },
@@ -117,12 +121,13 @@ function buildMenu(mainWindow, sessionManager, ptyManager, messageServer) {
         {
           label: 'New Agent...',
           accelerator: 'CmdOrCtrl+N',
+          enabled: sessionIsOpen,
           click: () => mainWindow.webContents.send('menu:newAgent'),
         },
         { type: 'separator' },
         {
           label: 'Remove All Agents',
-          enabled: hasAgents,
+          enabled: sessionIsOpen && hasAgents,
           click: () => mainWindow.webContents.send('menu:removeAllAgents'),
         },
       ],
@@ -132,6 +137,7 @@ function buildMenu(mainWindow, sessionManager, ptyManager, messageServer) {
       submenu: [
         {
           label: 'Agent Layout',
+          enabled: sessionIsOpen,
           submenu: [
             { label: 'Side by Side', type: 'radio', checked: true, click: () => mainWindow.webContents.send('menu:setLayout', 'side-by-side') },
             { label: 'Stacked', type: 'radio', checked: false, click: () => mainWindow.webContents.send('menu:setLayout', 'stacked') },
@@ -139,12 +145,13 @@ function buildMenu(mainWindow, sessionManager, ptyManager, messageServer) {
           ],
         },
         { type: 'separator' },
-        { label: 'Show Discussion', click: () => mainWindow.webContents.send('menu:showDiscussion') },
-        { label: 'Show Tasks', click: () => mainWindow.webContents.send('menu:showTasks') },
+        { label: 'Show Discussion', enabled: sessionIsOpen, click: () => mainWindow.webContents.send('menu:showDiscussion') },
+        { label: 'Show Tasks', enabled: sessionIsOpen, click: () => mainWindow.webContents.send('menu:showTasks') },
         { type: 'separator' },
         {
           label: 'Toggle Light/Dark Theme',
           accelerator: 'CmdOrCtrl+T',
+          enabled: sessionIsOpen,
           click: () => mainWindow.webContents.send('menu:toggleTheme'),
         },
       ],
@@ -154,10 +161,12 @@ function buildMenu(mainWindow, sessionManager, ptyManager, messageServer) {
       submenu: [
         {
           label: 'Archive Discussion...',
+          enabled: sessionIsOpen,
           click: () => mainWindow.webContents.send('menu:archiveDiscussion'),
         },
         {
           label: 'Restore Archived Messages',
+          enabled: sessionIsOpen,
           click: () => mainWindow.webContents.send('menu:restoreArchived'),
         },
       ],
@@ -188,7 +197,7 @@ function buildMenu(mainWindow, sessionManager, ptyManager, messageServer) {
               type: 'info',
               title: 'About ClaudeSession',
               message: 'ClaudeSession',
-              detail: 'Multi-agent Claude Code session manager.\n\nVersion 1.0.0',
+              detail: `Multi-agent Claude Code session manager.\n\nVersion ${app.getVersion()}`,
             });
           },
         },
@@ -201,4 +210,4 @@ function buildMenu(mainWindow, sessionManager, ptyManager, messageServer) {
   return menu;
 }
 
-module.exports = { buildMenu, setMessagePanelState, setAgentsPanelState };
+module.exports = { buildMenu, setMessagePanelState, setAgentsPanelState, addRecentSession };

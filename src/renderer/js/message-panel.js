@@ -3,6 +3,31 @@ import { getAgentColor, setColorTheme, getColorTheme, refreshAgentColors, getAct
 // Global refs — set when discussion component is created
 let msgListEl = null;
 let masterInputEl = null;
+let globalListenersRegistered = false;
+
+// Register IPC listeners ONCE (not per component creation)
+export function initGlobalMessageListeners() {
+  if (globalListenersRegistered) return;
+  globalListenersRegistered = true;
+
+  window.electronAPI.onNewMessage((msg) => appendMessage(msg));
+  window.electronAPI.onMenuEvent('menu:archiveDiscussion', showArchiveModal);
+  window.electronAPI.onMenuEvent('menu:restoreArchived', async () => { await restoreArchivedMessages(); });
+
+  // Theme
+  window.electronAPI.getSetting('theme').then((t) => { if (t) applyTheme(t); });
+  window.electronAPI.onMenuEvent('menu:toggleTheme', () => {
+    const nt = getColorTheme() === 'dark' ? 'light' : 'dark';
+    applyTheme(nt); window.electronAPI.setSetting('theme', nt);
+  });
+}
+
+function applyTheme(theme) {
+  document.body.classList.remove('theme-dark', 'theme-light');
+  document.body.classList.add(`theme-${theme}`);
+  setColorTheme(theme);
+  refreshAgentColors();
+}
 
 export function initMessagePanel(el) {
   const list = el.querySelector('.disc-message-list');
@@ -13,13 +38,8 @@ export function initMessagePanel(el) {
 
   msgListEl = list;
 
-  // Archive
+  // Archive button (DOM event, safe to re-register per component)
   archiveBtn.addEventListener('click', showArchiveModal);
-  window.electronAPI.onMenuEvent('menu:archiveDiscussion', showArchiveModal);
-  window.electronAPI.onMenuEvent('menu:restoreArchived', async () => { await restoreArchivedMessages(); });
-
-  // New messages from IPC
-  window.electronAPI.onNewMessage((msg) => appendMessage(msg));
 
   // Zoom
   const ZOOM_LEVELS = [75, 85, 100, 115, 130, 150];
@@ -45,22 +65,8 @@ export function initMessagePanel(el) {
     else if (e.deltaY > 0 && idx > 0) applyZoom(ZOOM_LEVELS[idx - 1]);
   }, { passive: false });
 
-  // Theme
-  function applyTheme(theme) {
-    document.body.classList.remove('theme-dark', 'theme-light');
-    document.body.classList.add(`theme-${theme}`);
-    setColorTheme(theme);
-    refreshAgentColors();
-  }
-  window.electronAPI.getSetting('theme').then((t) => { if (t) applyTheme(t); });
-  window.electronAPI.onMenuEvent('menu:toggleTheme', () => {
-    const nt = getColorTheme() === 'dark' ? 'light' : 'dark';
-    applyTheme(nt); window.electronAPI.setSetting('theme', nt);
-  });
-
-  // Port
+  // Port — use direct value set, not IPC listener (to avoid stacking)
   window.electronAPI.getServerPort().then((p) => { portInput.value = p; });
-  window.electronAPI.onServerPort((p) => { portInput.value = p; });
   restartBtn.addEventListener('click', async () => {
     const p = parseInt(portInput.value, 10);
     if (isNaN(p) || p < 1024 || p > 65535) { portInput.style.borderColor = '#f44747'; return; }
@@ -133,14 +139,16 @@ export function appendMessage(msg) {
 export function appendBroadcast(text) {
   if (!msgListEl) return;
   const e = document.createElement('div'); e.className = 'message-entry message-broadcast';
-  e.innerHTML = `<div class="message-meta"><span class="message-from broadcast-from">You</span> &rarr; <span class="message-to">All Agents</span> &middot; ${esc(new Date().toLocaleTimeString())}</div><div class="message-content">${esc(text)}</div>`;
+  e.innerHTML = `<span class="msg-remove" title="Remove">&times;</span><div class="message-meta"><span class="message-from broadcast-from">You</span> &rarr; <span class="message-to">All Agents</span> &middot; ${esc(new Date().toLocaleTimeString())}</div><div class="message-content">${esc(text)}</div>`;
+  e.querySelector('.msg-remove').addEventListener('click', () => e.remove());
   msgListEl.appendChild(e); msgListEl.scrollTop = msgListEl.scrollHeight;
 }
 
 export function appendAside(text, target) {
   if (!msgListEl) return;
   const e = document.createElement('div'); e.className = 'message-entry message-aside';
-  e.innerHTML = `<div class="message-meta"><span class="message-from broadcast-from">You</span> &rarr; <span class="message-to">${esc(target)}</span> &middot; ${esc(new Date().toLocaleTimeString())}</div><div class="message-content">${esc(text)}</div>`;
+  e.innerHTML = `<span class="msg-remove" title="Remove">&times;</span><div class="message-meta"><span class="message-from broadcast-from">You</span> &rarr; <span class="message-to">${esc(target)}</span> &middot; ${esc(new Date().toLocaleTimeString())}</div><div class="message-content">${esc(text)}</div>`;
+  e.querySelector('.msg-remove').addEventListener('click', () => e.remove());
   msgListEl.appendChild(e); msgListEl.scrollTop = msgListEl.scrollHeight;
 }
 
@@ -198,11 +206,21 @@ function showArchiveModal() {
   const bb = document.getElementById('archive-select-dir');
   const sb = document.getElementById('archive-save');
   const cb = document.getElementById('archive-cancel');
+  const clb = document.getElementById('archive-clear-only');
   pd.textContent = ''; pd.dataset.path = ''; cc.checked = true; modal.classList.remove('hidden');
   let done = false;
-  function fin() { if (done) return; done = true; modal.classList.add('hidden'); document.removeEventListener('keydown', ok); bb.removeEventListener('click', ob); sb.removeEventListener('click', os); cb.removeEventListener('click', oc); }
+  function fin() { if (done) return; done = true; modal.classList.add('hidden'); document.removeEventListener('keydown', ok); bb.removeEventListener('click', ob); sb.removeEventListener('click', os); cb.removeEventListener('click', oc); clb.removeEventListener('click', ocl); }
   function ok(e) { if (e.key === 'Escape') fin(); }
   function oc() { fin(); }
+  async function ocl() {
+    // Hide archive modal, show confirm modal
+    modal.classList.add('hidden');
+    const confirmed = await showConfirmDialog('Clear Discussion', 'This will clear all messages from the discussion without saving to a file. Are you sure?');
+    if (!confirmed) { modal.classList.remove('hidden'); return; }
+    await window.electronAPI.clearMessages();
+    if (msgListEl) msgListEl.innerHTML = '';
+    fin();
+  }
   async function ob() {
     const fp = await window.electronAPI.saveFileDialog({ title: 'Save Discussion Archive', defaultPath: 'discussion-archive.csv', filters: [{ name: 'CSV', extensions: ['csv'] }, { name: 'Text', extensions: ['txt'] }] });
     if (fp) { pd.textContent = fp; pd.dataset.path = fp; pd.title = fp; }
@@ -224,7 +242,20 @@ function showArchiveModal() {
     if (cc.checked) { await window.electronAPI.clearMessages(); if (msgListEl) msgListEl.innerHTML = ''; }
     fin();
   }
-  document.addEventListener('keydown', ok); bb.addEventListener('click', ob); sb.addEventListener('click', os); cb.addEventListener('click', oc);
+  document.addEventListener('keydown', ok); bb.addEventListener('click', ob); sb.addEventListener('click', os); cb.addEventListener('click', oc); clb.addEventListener('click', ocl);
+}
+
+function showConfirmDialog(title, message) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `<div class="modal-dialog" style="width:380px"><h2>${esc(title)}</h2><p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px">${esc(message)}</p><div class="modal-actions"><button class="modal-btn-secondary" id="confirm-no">Cancel</button><button class="modal-btn-danger" id="confirm-yes">Clear</button></div></div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector('#confirm-yes').addEventListener('click', () => { overlay.remove(); resolve(true); });
+    overlay.querySelector('#confirm-no').addEventListener('click', () => { overlay.remove(); resolve(false); });
+    overlay.addEventListener('keydown', (e) => { if (e.key === 'Escape') { overlay.remove(); resolve(false); } });
+    overlay.querySelector('#confirm-no').focus();
+  });
 }
 
 function esc(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }

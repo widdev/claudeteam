@@ -188,6 +188,7 @@ class SessionManager {
     this._save();
   }
 
+
   getArchivedMessages() {
     if (!this.db) return [];
     const stmt = this.db.prepare(`SELECT * FROM messages WHERE deleted = 1 ORDER BY timestamp ASC, id ASC`);

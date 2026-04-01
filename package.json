@@ -1,6 +1,6 @@
 {
   "name": "claude-session",
-  "version": "1.0.10",
+  "version": "1.0.11",
 "description": "Multi-agent Claude Code session manager with inter-agent messaging",
   "author": "ClaudeSession",
   "main": "src/main/main.js",

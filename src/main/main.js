@@ -5,7 +5,7 @@ const { PtyManager } = require('./pty-manager');
 const { SessionManager } = require('./session-manager');
 const { startMessageServer, stopMessageServer } = require('./message-server');
 const { registerIpcHandlers } = require('./ipc-handlers');
-const { buildMenu, setMessagePanelState, setAgentsPanelState } = require('./menu');
+const { buildMenu, setMessagePanelState, setAgentsPanelState, addRecentSession } = require('./menu');
 
 let mainWindow = null;
 let ptyManager = null;
@@ -101,6 +101,8 @@ async function initialize() {
       console.log('Last session file:', data.sessionPath);
       if (data.sessionPath && fs.existsSync(data.sessionPath)) {
         await sessionManager.open(data.sessionPath);
+        const name = sessionManager.getMeta('sessionName') || path.basename(data.sessionPath, '.cms');
+        addRecentSession(data.sessionPath, name);
         console.log('Session restored:', sessionManager.isOpen());
       } else {
         console.log('Session file not found on disk');
@@ -177,6 +179,7 @@ async function handleAppClose() {
                 counter++;
               }
               sessionManager.saveTo(filePath);
+              addRecentSession(filePath, name);
               resolve(filePath);
             });
           });
