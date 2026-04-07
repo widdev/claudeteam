@@ -192,6 +192,7 @@ An agent is an individual Claude Code instance running in its own terminal. Each
 Each agent panel has a compact header bar containing:
 
 - **Attention badge** — an "!" indicator that appears when the agent needs your attention (see below)
+- **Exclude button** — toggles whether the agent receives broadcast messages (see below)
 - **Nudge button** — sends a prompt asking the agent to check for new messages
 - **Working directory** path (shortened to the last folder name, with full path shown on hover)
 - A **...** button to change the working directory
